@@ -124,9 +124,63 @@ class Test {
 
 <details>
   <summary>인스턴스 통제 클래스</summary>
-</details>
 
 > 정적 팩토리 메소드는 언제 어떤 인스턴스를 살아 있게 할지 철저히 통제 할 수 있다 <br/>
 > 이런 클래스를 인스턴스 통제 클래스라고 한다
 
-대표적으로 인스턴스가 통제되는것이 바로 <u><strong>싱글톤</strong></u>이다
+대표적으로 인스턴스가 통제되는것이 바로 <u><strong>싱글톤</strong></u>이다 <br />
+만약 우리가 같은 클래스를 반복해서 부른다면 무슨 문제가 발생할까?
+
+1. 불필요한 객체 생성에 따른 메모리 낭비
+    - 객체를 통제하지 않고 요청에 따라 새로운 객체를 계속해서 생성한다면 메모리를 불필요하게 과하게 차지하고 이는 성능 저하로 이어진다
+2. 우리가 어떤 객체의 상태에 따른 값을 공유하고 싶어도 하지 못한다
+    - 객체를 계속해서 새롭게 만든다면 객체는 여러개이기 때문에 일관성있는 데이터를 보장하지 못한다
+
+이 문제를 정적 팩토리 메소드를 통해 객체의 생성을 통제하고 불변 값 클래스에서 동치인 인스턴스가 단 하나뿐임을 보장할 수 있다 <br/>
+불변 값 클래스에서 동치인 인스턴스가 단 하나뿐임을 보장한다는 것은 equals를 통해 상세한 구현없이 == 만으로도 비교가 가능하다는 것이다 <br/>
+이를 코드를 통해 더욱 상세하게 확인해본다면
+
+```java
+public final class Color {
+    private static final Map<String, Color> CACHE = new ConcurrentHashMap<>();
+    private final String name;
+
+    private Color(String name) {
+        this.name = name;
+    }
+
+    public static Color of(String name) {
+        return CACHE.computeIfAbsent(name, Color::new);
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+이렇게 final을 통해 불변 클래스를 만들고 해당 값을 new ConcurrentHashMap()으로 값을 캐싱해놓는다. 그리고 우리가 Integer를 valueOf로 호출을 해서 객체를 만들었던 것 처럼 객체를 만드는 것이다
+
+그러면 굳이 new 연산자를 통한 인스턴스 생성없이 객체를 생성할 수 있고 이렇게 생성된 객체는 .equals()가 아닌 == 으로 비교가 가능한 것이다
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Color red1 = Color.of("red");
+        Color red2 = Color.of("red");
+        Color blue = Color.of("blue");
+
+        System.out.println(red1 == red2);  // true (같은 객체)
+        System.out.println(red1 == blue);  // false (다른 객체)
+    }
+}
+```
+이렇게 객체를 미리 Map에 저장하고 해당 불변 객체의 값인 name이 key로써 존재하지 않으면 새롭게 만들고 있다면 기존의 것을 주면서 동일성을 유지할 수 있다
+</details>
+
+
+### 3. 반환 타입의 하위 타입 객체를 반환할 수 잇는 능력이 있다
+
+반환할 객체의 클래스를 자유롭게 선택할 수 있는 것은 엄청난 유연성을 보여 줄 수 있다. <br/>
+이 유연성을 API를 만들때 구현 클래스를 공개하지 않고 원하는 객체를 반환하면서 그 효력이 톡톡히 발휘된다.
+
+기존엔 사용할 수 없었던 기능인 
