@@ -178,9 +178,234 @@ public class Main {
 </details>
 
 
-### 3. 반환 타입의 하위 타입 객체를 반환할 수 잇는 능력이 있다
+### 3. 반환 타입의 하위 타입 객체를 반환할 수 있는 능력이 있다
+
+<details>
+  <summary>상위 객체를 반환하려 하지만 하위 타입이 반환</summary>
 
 반환할 객체의 클래스를 자유롭게 선택할 수 있는 것은 엄청난 유연성을 보여 줄 수 있다. <br/>
-이 유연성을 API를 만들때 구현 클래스를 공개하지 않고 원하는 객체를 반환하면서 그 효력이 톡톡히 발휘된다.
+이 유연성을 API를 만들때 구현 클래스를 공개하지 않고 원하는 객체를 반환하면서 그 효력이 톡톡히 발휘된다. <br/>
 
-기존엔 사용할 수 없었던 기능인 
+예를 들어서 Collections를 들어보자
+```java
+public class Main {
+   public static List<Integer> createArrayList() {
+      return new ArrayList<>();
+   }
+
+   public static void main(String[] args) {
+      List<Integer> list = createArrayList();
+      list.add(10);
+      list.add(20);
+   }
+}
+```
+우리가 흔하게 사용하는 상위 객체를 반환하는 것을 기대하지만 실제로는 하위 객체를 반환하는 예시 중 <br/>
+<code>List<Integer> arr = new ArrayList<>();</code>와 같은것을 정적 메서드를 사용해서 표현해보려고 했다
+
+위와 같이 List의 반환을 기대하지만 결국 ArrayList인 것을 알 수 있듯이 하위 객체를 이런식으로 반환할 수 있다
+</details>
+
+### 4. 입력 매개변수에 따라 매번 다른 클래스의 객체를 반환할 수 있다
+
+<details>
+  <summary>매개변수의 값에 따른 다른 클래스 변환 예시</summary>
+
+매개변수가 어떻게 들어오느냐에 따라 제작할 수 있는 클래스가 다를 수 있고 그것을 정적 팩토리 메서드가 진행할 수 있다
+```java
+interface Product {
+    void use();
+}
+
+class ConcreteProductA implements Product {
+    @Override
+    public void use() {
+        System.out.println("Using Product A");
+    }
+}
+
+class ConcreteProductB implements Product {
+    @Override
+    public void use() {
+        System.out.println("Using Product B");
+    }
+}
+
+class ProductFactory {
+    public static Product createProduct(String type) {
+        if (type.equalsIgnoreCase("A")) {
+            return new ConcreteProductA();
+        } else if (type.equalsIgnoreCase("B")) {
+            return new ConcreteProductB();
+        }
+        throw new IllegalArgumentException("Unknown product type");
+    }
+}
+
+public class Main2 {
+    public static void main(String[] args) {
+        Product productA = ProductFactory.createProduct("A");
+        productA.use();
+    }
+}
+```
+굳이 코드를 해석하자면 다 같은 Product생성 메소드이지만 값에 따라 각각 다른 클래스로 변환되어 나올 수 있다는 것이다
+</details>
+
+### 5. 정적 팩터리 메서드를 작성하는 시점에는 반환할 객체의 클래스는 존재하지 않아도 된다
+
+<details>
+   <summary>구현체를 반환하지 않는 코드 예시</summary>
+
+반환하는 시점이 중요하다 구현체를 반환하지 않고 인터페이스의 역할을 하는 것으로 반환을 하여 진행을 하는 것이다
+```java
+interface Animal {
+    void speak();
+}
+
+class Dog implements Animal {
+    @Override
+    public void speak() {
+        System.out.println("Woof!");
+    }
+}
+
+class Cat implements Animal {
+    @Override
+    public void speak() {
+        System.out.println("Meow!");
+    }
+}
+
+class AnimalFactory {
+    public static Animal createAnimal(String type) {
+        switch (type.toLowerCase()) {
+            case "dog":
+                return new Dog();
+            case "cat":
+                return new Cat();
+            default:
+                throw new IllegalArgumentException("Unknown animal type: " + type);
+        }
+    }
+}
+
+public class Main3 {
+    public static void main(String[] args) {
+        Animal dog = AnimalFactory.createAnimal("dog");
+        dog.speak();
+
+        Animal cat = AnimalFactory.createAnimal("cat");
+        cat.speak();
+    }
+}
+```
+이렇게 보면 createAnimal이라는 정적 메소드는 Dog나 Cat이 아닌 Animal자체를 반환하는 것을 볼 수 있다 <br/>
+그리고 각각의 구현체는 Animal의 speak()를 구현하여 사용하는 것을 볼 수 있다
+
+이렇게 상세한 구현체를 바로 반환하지 않고 그저 인터페이스인 Animal만을 반환하지만 Animal에 존재하는 메소드는 speak()는 사용할 수 있다
+
+또한 자세히보면 이는 네번째의 성질이였던 <u><strong>매개변수에 따라 반환되는 객체의 변환</strong></u>과도 연관이 있는 코드인것을 볼 수있는데 이렇게 다양하게 사용할 수 있는것이다
+
+이와 굉장히 비슷한 것으로 JDBC가 존재한다 JDBC에서는 각 DB를 연결하는 getConnection에서 해당 내용이 잘 드러난다 <br/>
+<code>Connection conn = DriverManager.getConnection("연결하고자 하는 DB 내용")</code><br/>
+이렇게 JDBC 또한 코드를 작성하는 당시에는 정확히 어떤 DB로 연결될지는 모르지만 코드를 이어 작성하는 것에는 전혀 문제가 없는 것을 확인할 수 있다
+코드도 보면 new 연산자가 아닌것으로 알 수 있듯이 정적 팩토리로 그 메소드를 진행하는 것으로 알 수 있다
+</details>
+
+## 단점
+
+### 1. 상속을 위해 public이나 protected 생성자가 필수로 필요하다
+
+우리가 정적 팩토리 메소드를 사용해서 값을 만들때 싱글턴을 사용하는 경우 해당 클래스의 생성자를 종종 private하게 만들어 외부에서 생성 자체를 막는 경우가 많다는 것을 알 수 있다 <br/>
+그리고 생성 자체를 정적 팩토리 메소드에게 맡겨 컴파일 타임에서 객체 생성을 진행할 수 있는데 이렇게 되면 해당 클래스는 다른 클래스가 해당 클래스를 상속할 수 없다
+```java
+public class Parent {
+    private Parent() {}
+
+    public static Parent create() {
+        return new Parent();
+    }
+}
+
+class Child extends Parent {
+    public Child() {
+        super(); // 문제 발생
+    }
+}
+```
+super()를 통해 생성자로 만들어주어 구성을 해줘야 하지만 그렇게 하지 못하게 되는 것이다<br/>
+해결 방법으로는 해당 생성자를 protect 접근 제어자를 사용하는 방법도 있겠지만 어쨌든 상속을 해주고자 하는 클래스가 존재한다면 private한 생성자는 만들기 어렵다
+물론 상속을 한다는 행위와 싱글톤을 유지하려는 행위는 상충한다 ( 상속은 부모의 객체를 만드려고 하고 싱글톤은 해당 부모의 객체를 하나만 만들어서 사용 ) <br/>
+
+싱글톤을 유지하면서 상속을 진행하려면 자식이 부모를 super하여 만드는 것이 아닌 부모가 자식 클래스를 만드는 행위를 해야한다
+```java
+class Parent {
+    public static class SinletonHolder {
+        private static final Parent INSTANCE = new Parent();
+    }
+
+    protected Parent() {}
+
+    public static Parent getInstance() {
+        return Parent.SinletonHolder.INSTANCE;
+    }
+
+    public static Parent createChildren() {
+        return new Child();
+    }
+}
+
+class Child extends Parent {
+    public Child() {
+        super();
+    }
+}
+```
+이렇게 생성자가 뭔가 역전 된듯한 모습을 볼 수 있다. <br/>
+물론 사용하는것에 문제는 없다. 이또한 정적 팩토리 메소드의 장점 중 하나인 <u><strong>반환 타입의 하위 타입 객체를 반환하는 능력</strong></u>덕분이지만 코드가 좋은 코드라고 하기엔 무리가 있다
+
+그래서 결국 우리는 의존성 주입을 활용해서 만드는것이 좋은 해결 방안이라는 것을 알 수 있다
+
+### 2. 찾기 어렵다
+
+정적 팩토리 메소드는 개발자가 직접 만드는 것이기 때문에 다른 개발자는 역시 정적 팩토리 메소드가 어떻게 작성되었는지 알아야 한다 아니면 만들때 설명서에 아주 자세하게 잘 작성해놓는 방법도 있다
+
+하지만 일일히 작성하기엔 시간이 없기때문에 정적 팩토리의 첫번째 장점인 이름을 정하는 것에서 규칙을 만들어 두기로 한다
+
+- from : 매개변수를 `한 개` 받아 해당 타입의 인스턴스를 반환하는 형변환 메서드 <br/>
+```java
+public static User from(UserRequest request) {
+  return new User(request.getName(), request.getEmail());
+}
+```
+- of : `여러개의 매개변수`를 받아 적합한 타입의 인스턴스 반환 <br/>
+```java
+public static User of(String name, String email, int age) {
+    return new User(name, email, age);
+}
+```
+- valueOf : from과 of보다 더 자세한 버전 ( 추가 검증과 같은 좀 더 까다롭게 변환을 한다 )<br/>
+```java
+public static User valueOf(UserRequest request) {
+     if (request.getEmail() == null || !request.getEmail().contains("@")) {
+         throw new IllegalArgumentException("Invalid email format");
+     }
+     return new User(request.getName(), request.getEmail());
+}
+```
+- getInstance : 매개변수로 명시한 인스턴스 반환 but 동일한 인스턴스를 보장하지 않는다<br/>
+```java
+public class UserFactory {
+    // 반환 객체가 클래스와 다르다
+    public static User getInstance(UserRequest request) {
+        return new User(request.getName(), request.getEmail());
+    }
+}
+```
+- newInstance : 매번 새로운 인스턴스를 생성하고 반환한다 (코드는 from과 비슷하지만 정확한 의미 전달 목적)<br/>
+```java
+public static User newInstance(UserRequest request) {
+  return new User(request.getName(), request.getEmail());
+}
+```
