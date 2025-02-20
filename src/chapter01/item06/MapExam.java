@@ -11,10 +11,12 @@ public class MapExam {
         Set<String> keys1 = map.keySet();
         Set<String> keys2 = map.keySet();
 
-        System.out.println(keys1);
+        System.out.println(keys1 == keys2);
         System.out.println(keys2);
 
         keys1.remove("A");
+        keys1.add("A");
+
 
         System.out.println(keys1);
         System.out.println(keys2);

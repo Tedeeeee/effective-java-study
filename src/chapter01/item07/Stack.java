@@ -4,8 +4,8 @@ import java.util.Arrays;
 import java.util.EmptyStackException;
 
 public class Stack {
-    private Object[] elements;
-    private int size = 0;
+    public Object[] elements;
+    public int size = 0;
     private static final int DEFAULT_INITIAL_CAPACITY = 10;
 
     public Stack() {
@@ -40,13 +40,12 @@ public class Stack {
 class Main {
     public static void main(String[] args) {
         Stack stack = new Stack();
-        stack.push(1);
-        stack.push(2);
 
-        Object pop = stack.pop();
-
+        Object[] elements = stack.elements;
         stack = null;
 
-        System.out.println(pop);
+        System.out.println(stack.elements);
+        System.out.println(stack.size);
+        System.out.println("--------------");
     }
 }

@@ -31,7 +31,6 @@ public class GCDemo {
         department.addEmployee(new Employee("Alice"));
 
         List<Employee> employees = department.employees;
-        department.employees = null;
         department = null;
 
         System.out.println(department.name);
