@@ -117,7 +117,93 @@ AutoCloseable을 구현하고 실제 클라이언트에서 사용 종료시 clos
 
 하지만 결국 모두 try-with-resource에서 정리된다.
 
-
-
 사용한 리소스를 효과적으로 정리하기 위해서는 다 사용한뒤 <u>바로 정리한다는 것</u>이 중요하다.<br/>
 하지만 Finalizer와 Cleaner는 모두 즉시 정리되는 것이 아니기에 자바에서는 `try-with-resources`나 `try-finally`를 사용하여 해결한다
+
+# 책의 예시를 통한 Cleaner 사용법 알아보기
+
+cleaner는 finalizer보다 훨씬 사용하기 어렵다 `finalizer`는 Java18 버전에서 완전히 없어졌지만 말이다.
+finalizer는 그냥 메소드를 만들어서 자원을 정리해주면 되지만 cleaner는 조금 더 복잡하다
+
+책에서 나온 예시를 통해서 알아보자
+
+> 방(Room)이 있고 해당 방을 다 사용하면 다음 사람이 사용하기 이전에 깨끗하게 정리해야한다
+
+```java
+public class Room implements AutoCloseable{
+    private static final Cleaner cleaner = Cleaner.create();
+
+    private static class State implements Runnable {
+
+        int numJunkPiles;
+
+        State(int numJunkPiles) {
+            this.numJunkPiles = numJunkPiles;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("방 청소");
+            numJunkPiles = 0;
+        }
+    }
+
+    private final State state;
+
+    private final Cleaner.Cleanable cleanable;
+
+    public Room(int numJunkPiles) {
+        state = new State(numJunkPiles);
+        cleanable = cleaner.register(this, state);
+    }
+
+    @Override
+    public void close() throws Exception {
+        cleanable.clean();
+    }
+}
+```
+static으로 선언된 중첩 클래스인 State는 cleaner가 방을 청소하면 수거할 자원을 담고 있다<br/>
+방에서 사용한 내용(numJunkPiles)를 0으로 다시 셋팅해주는 것이다.
+
+State는 Runnable을 구현하고 그 안의 run 메서드가 cleanable을 통해 딱 한번 호출 된다.<br/>
+cleanable 객체는 Room 생성자에서 cleaner에 Roon과 State를 등록할 때 얻는다.<br/>
+그럼 run은 Room의 close가 호출 될 때마다 실행이 될텐데 이는 GC가 Room 객체를 회수할때까지 클라이언트가 스스로 close를 부르지 않으면 cleaner가 호출한다
+
+> State가 Room을 참조하게 되면 순환참조가 발생하니 주의하자 <br/>
+
+State가 static 중첩 클래스인 이유는 정적이 아니라면 바깥 객체의 참조를 갖게 된다.
+> 무슨 말이냐면 비정적 클래스로 선언하면 자동으로 바깥 객체인 Room을 참조한다<br/>
+> State가 항상 Room을 바라보고 있게 되는데 그러면 Cleaner가 Room 뿐만 아니라 State도 정리를 해주어야만 Room도 정리가 된다<br/>
+> 그러면 결국 또 악순환이 반복되는 것이다.
+
+`정적 클래스가 아닌 이너클래스는 항상 본체를 바라보고 있다` 이말이 중요하다<br/>
+또한 람다도 마찬가지이다. 이너 클래스(non-static)로써 사용되기 때문에 똑같이 조심해주어야 한다.
+
+어쨌든 위의 코드는 Room의 cleaner를 만들긴 했지만 이는 역시 안전망에 불과하다 결국 try-with-resources에서 사용된다면 자동 청소는 아주 자연스럽게 이뤄진다
+
+```java
+public class Adult {
+    public static void main(String[] args) throws Exception {
+        try (Room myRoom = new Room(5)) {
+            System.out.println("안녕~");
+        }
+    }
+}
+```
+자연스럽게 AutoCloseable의 close가 실행되고 cleaner의 메모리 정리가 진행될 것이다
+
+하지만 앞서 배운 내용을 보여주기 위해 만약 그냥 사용하고 GC호출을 기대하는 메소드를 호출한다면 어떻게 될까?
+```java
+public class Teenager {
+    public static void main(String[] args) {
+        new Room(99);
+
+        System.gc();
+    }
+}
+
+```
+역시나 아 ~ 무런 일도 일어나지 않는다. cleaner가 작동하길 `기대`하는 것 뿐이지 실제로 작동할지는 모른다
+
+
