@@ -140,6 +140,111 @@ class privateClass {
 
 > 위의 모든 상황은 `Object의 equals()`만으로도 충분히 해결된다는 것을 알 수 있다.
 
-그렇다면 Equals를 최대한 사용하지 말라는 뜻일까?
-
 # Equals 를 재정의하는 기준
+Equals를 재정의 하는 기준은 결국 위의 반대 상황인 `논리적 동치성이 필요할때`라는 것이다<br/>
+두개의 객체가 같은 것 뿐만이 아닌 같은 값까지 확인하기 위해 만들어질때 아주 유용하게 사용할 수 있다는 것이다<br/>
+또한 이는 나중에 Map과 Set 객체에서도 아주아주 유용하게 사용된다.
+
+>주의!
+> 
+> 값이 같더라도 해당 인스턴스가 둘 이상 만들어질 수 없는 상황(ex. 싱글톤)일때와 Enum일때는 애초에 2개 이상의 같은 클래스가 만들어지지 않기 때문에 굳이 만들필요 없다
+
+## Equals의 규약
+### 반사성 
+> x.equals(x)같이 자기 자신과 비교하는 것은 항상 true여야 한다
+  - <code>if(this == obj) return true</code> 이런 코드를 자주 볼 수 있을것이다.
+  - 어긴다면 해당 클래스가 컬렉션에 들어갔을때 contains()로 비교할 수 없다
+### 대칭성 
+> x와 y의 참조값이 만들어지고 x.equals(y)가 true 라면 그 반대도 항상 true여야 한다
+```java
+public final class CaseInsensitiveString {
+    private final String s;
+
+    public CaseInsensitiveString(String s) {
+        this.s = Objects.requireNonNull(s);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof CaseInsensitiveString) {
+            return s.equalsIgnoreCase(((CaseInsensitiveString) o).s);
+        }
+        
+        if (o instanceof String) {
+            return s.equalsIgnoreCase((String) o);
+        }
+        
+        return false;
+    }
+    
+    // 그외 코드
+}
+
+class CaseInsensitiveStringTest {
+    public static void main(String[] args) {
+        CaseInsensitiveString cis = new CaseInsensitiveString("abc");
+        String s = "abc";
+
+        System.out.println(cis.equals(s)); // true
+        System.out.println(s.equals(cis)); // false
+    }
+}
+```
+두개의 상황이 대칭성이 무너진 상황이다. cis.equals(s) 가 true가 나오면 s도 true로 나와야 하지만 String은 cis의 존재를 모르기에 false로 보일 수 밖에 없다
+또한 이는 컬렉션의 `contains()`에서도 문제가 발생한다. 
+
+```java
+class CaseInsensitiveStringTest {
+  public static void main(String[] args) {
+    List<CaseInsensitiveString> list = new ArrayList<>();
+    list.add(cis);
+
+    System.out.println(list.contains(s));
+  }
+}
+```
+이렇게 해도 s는 cis와 비교가 안되기 때문에 false가 되는 것이다.<br/>
+그래서 String과 연관시키려는 것은 포기하고 cis의 equals()가 변경되어야 한다
+
+```java
+public final class CaseInsensitiveString {
+    private final String s;
+
+    public CaseInsensitiveString(String s) {
+        this.s = Objects.requireNonNull(s);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return o instanceof CaseInsensitiveString &&
+              ((CaseInsensitiveString) o).s.equalsIgnoreCase(s);
+    }
+    
+    // 그외 코드
+}
+
+class CaseInsensitiveStringTest {
+  public static void main(String[] args) {
+    CaseInsensitiveString cis = new CaseInsensitiveString("abc");
+    String s = "abc";
+
+    System.out.println(cis.equals(s)); // false
+    System.out.println(s.equals(cis)); // false
+
+    List<CaseInsensitiveString> list = new ArrayList<>();
+    list.add(cis);
+
+    System.out.println(list.contains(s)); // false
+  }
+}
+```
+이렇게 변경되면 String과의 비교는 아예 배제하고 같은 객체끼리만 비교할 수 있게 되는것이다.<br/>
+모두 true로 바꾸고자 하는 것이 아닌 `x와 y의 기준이 변경되어도 같은 결과가 발생하는 대칭성`이 만족하게 되었다
+
+### 추이성 
+> 참조값 x, y, z중 `x.equals(y) => true`이고 `y.equals(z) => true` 라면 `z.equals(x) => true`여야 한다
+### 일관성 
+> x와 y의 참조값이 만들어지고 x.equals(y)의 결과값은 항상 같아야 한다.
+### null 아님
+> equals(null)은 항상 false이다
+  - <code>if(obj == null) false</code>여야 한다
