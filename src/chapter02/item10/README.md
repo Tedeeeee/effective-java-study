@@ -243,6 +243,113 @@ class CaseInsensitiveStringTest {
 
 ### 추이성 
 > 참조값 x, y, z중 `x.equals(y) => true`이고 `y.equals(z) => true` 라면 `z.equals(x) => true`여야 한다
+ 
+결국 `x = y, y = z라면 x = z이다` 라는 말이다 요구조건은 간단하지만 어기기 쉽다
+```java
+public class Point {
+    private final int x;
+    private final int y;
+
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Point) ) return false;
+        Point point = (Point) o;
+        return x == point.x && y == point.y;
+    }
+}
+
+class ColorPoint extends Point {
+    private final String color;
+
+    public ColorPoint(int x, int y, String color) {
+        super(x, y);
+        this.color = color;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Point)) return false;
+
+        if (o instanceof ColorPoint) {
+            ColorPoint colorPoint = (ColorPoint) o;
+            return super.equals(colorPoint) && Objects.equals(color, colorPoint.color);
+        }
+        return super.equals(o);
+    }
+}
+```
+위의 ColorPoint 클래스의 `equals()`를 보면 
+- ColorPoint와 Point의 비교는 색상을 무시
+- ColorPoint끼리 비교할때는 색상을 포함해서 비교
+
+이는 추이성을 무시하는 코드라고 볼 수 있다. 이는 추후에 문제가 발생 할 수 있다<br/>
+
+예를 들면 해시 컬렉션을 사용할 때 문제가 발생한다.<br/>
+```java
+class Main {
+    public static void main(String[] args) {
+        Point x = new Point(1, 2);
+        ColorPoint y = new ColorPoint(1, 2, "red");
+        ColorPoint z = new ColorPoint(1, 2, "blue");
+
+        System.out.println(x.equals(y)); // true
+        System.out.println(x.equals(z)); // true
+        System.out.println(y.equals(z)); // false
+
+        Set<Point> set = new HashSet<>();
+        set.add(x);
+        System.out.println(set.contains(y)); // false
+    }
+}
+```
+- x는 y와 z에서 `true`지만 y와 z는 `false`이다
+- 위의 결과값대로라면 `contains`의 결과는 true로 나와야 하지만 그렇지 않았다. 
+
+사실 구체 클래스를 확장(extends)해서 새로운 값을 추가하며 `equals`의 규약을 만족시킬 수 없다<br/>
+그러면 어떻게 하면 좋을까?
+
+1. Color를 고려하지 않기
+비교하는 상황에서 아예 Color를 빼버리는 것이다.
+```java
+@Override
+public boolean equals(Object obj) {
+    if (obj == null || getClass() != obj.getClass()) return false;
+    ColorPoint cp = (ColorPoint) obj;
+    return super.equals(cp) && color.equals(cp.color);
+}
+```
+하지만 결국 이는 Point를 확장하는 클래스로써 역할을 못하게 되는 것이다. <br/>
+리스코프 치환 원칙에 따라 `하위 클래스는 부모 클래스를 대신 할 수 있어야 한다` 하지만 그렇게 못해주고 있는 것이 보인다
+
+2. 상속대신 컴포지션을 사용해라
+```java
+class CompositionColorPoint {
+    private final Point point;
+    private final String color;
+
+    public CompositionColorPoint(int x, int y, String color) {
+        this.point = new Point(x, y);
+        this.color = color;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof CompositionColorPoint)) return false;
+        CompositionColorPoint cp = (CompositionColorPoint) o;
+        return point.equals(cp.point) && color.equals(cp.color);
+    }
+
+    // ...
+}
+```
+이렇게 구체를 상속받아 `확장`하는 것이 아닌 해당 클래스에 `포함`되어 사용하는 것이다<br/>
+그럼 리스코프 치환 원칙과 추이성을 모두 해결한 코드로 볼 수 있다.
+
 ### 일관성 
 > x와 y의 참조값이 만들어지고 x.equals(y)의 결과값은 항상 같아야 한다.
 ### null 아님
