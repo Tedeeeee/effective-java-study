@@ -352,6 +352,53 @@ class CompositionColorPoint {
 
 ### 일관성 
 > x와 y의 참조값이 만들어지고 x.equals(y)의 결과값은 항상 같아야 한다.
+ 
+결국 두개의 객체는 변경이 되지 않는다면 영원히 같아야 한다는 것이다
+gk
+
+```java
+
+class EqualsConsistencyPerson {
+    private String name;
+
+    public EqualsConsistencyPerson(String name) {
+        this.name = name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        EqualsConsistencyPerson that = (EqualsConsistencyPerson) o;
+        return Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        int hashCode = Objects.hashCode(name);
+        return Objects.hash(name);
+    }
+}
+
+public class EqualsConsistency {
+    public static void main(String[] args) {
+        EqualsConsistencyPerson p1 = new EqualsConsistencyPerson("John");
+        EqualsConsistencyPerson p2 = new EqualsConsistencyPerson("John");
+
+        System.out.println(p1.equals(p2)); // true
+
+        p2.setName("John Call");
+
+        System.out.println(p1.equals(p2)); // false
+    }
+}
+```
+
+
+
 ### null 아님
 > equals(null)은 항상 false이다
   - <code>if(obj == null) false</code>여야 한다
