@@ -32,10 +32,12 @@ public class EqualsConsistency {
         EqualsConsistencyPerson p1 = new EqualsConsistencyPerson("John");
         EqualsConsistencyPerson p2 = new EqualsConsistencyPerson("John");
 
+        // x.equals(y)
         System.out.println(p1.equals(p2)); // true
 
         p2.setName("John Call");
 
+        // x.equals(y)
         System.out.println(p1.equals(p2)); // false
     }
 }
