@@ -92,10 +92,95 @@ class DeepCopyExam implements Cloneable {
 > 
 > 배열의 `clone()`은 런타임 타입과 컴파일타임 타입 모두가 원본 배열과 똑같은 배열을 반환한다<br/>
 > 그래서 배열의 복사는 `clone()`을 사용해도 좋다. `clone()`기능을 제대로 사용하는 유일한 예이다
+ 
+### 재귀적 `clone()`이면 될까?
+```java
+public class HashTableExam implements Cloneable {
+    private Entry[] buckets = ...;
+
+    private static class Entry {
+        final Object key;
+        Object value;
+        Entry next;
+
+        public Entry(Object key, Object value, Entry next) {
+            this.key = key;
+            this.value = value;
+            this.next = next;
+        }
+    }
+
+    @Override
+    public HashTableExam clone() throws CloneNotSupportedException {
+        try {
+            HashTableExam result = (HashTableExam) super.clone();
+            result.buckets = buckets.clone();
+            return result;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+}
+```
+HashTable의 예시로 만든 결과이다. 위의 buckets를 복사하면 배열이 복사되지만 직접 만든 배열이기때문에 얕은 복사의 문제점이 같이 발생한다
+
+```java
+public class HashTableExam implements Cloneable {
+    private Entry[] buckets = ...;
+
+    private static class Entry {
+        final Object key;
+        Object value;
+        Entry next;
+
+        public Entry(Object key, Object value, Entry next) {
+            this.key = key;
+            this.value = value;
+            this.next = next;
+        }
+        
+        Entry deepCopy() {
+            return new Entry(key, value, 
+                    next == null ? null : next.deepCopy());
+        }
+    }
+
+    @Override
+    public HashTableExam clone() throws CloneNotSupportedException {
+        try {
+            HashTableExam result = (HashTableExam) super.clone();
+            result.buckets = new Entry[buckets.length];
+            for (int i = 0; i < buckets.length; i++) {
+                if (buckets[i] != null) {
+                    result.buckets[i] = buckets[i].deepCopy();
+                }
+            }
+            return result;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+}
+```
+그래서 Entry 배열 안에 있는 값도 모두 새롭게 복사하는 것을 알 수 있다. 이렇게 하면 우리가 위에서 배열을 복사했던것 처럼 `모두 서로 다른 객체로 깊은 복사`로 진행되는 것을 알 수 있다<br/>
+
+하지만 이렇게 끝을 알 수 없는 연결리스트 형태를 재귀적으로 불러내는 것은 스택 오버플로우를 발생 시킬 수 있다. 그래서 반복문을 사용해서 해결하는 방식도 있다
+```java
+Entry deepCopy() {
+    Entry result = new Entry(key, value, next);
+    for (Entry p = result; p.next != null ; p = p.next) {
+        p.next = new Entry(p.next.key, p.next.value, p.next.next);
+    }
+    return result;
+}
+```
+이런시그올 진행하면 된다
 
 ### 필드가 final이라면?
 <strong>Cloneable 아키텍처는 `가변 객체를 참조하는 필드는 final로 선언하라`라는 것과 충돌된다</strong><br/>
 그래서 복제를 할 수 있는 클래스를 만들어야 할 경우 final 한정자를 제거해야할 수 있다<br/>
+
+
 
 ## 3. `clone()`은 오롯이 복제라기 보다는 생성자의 역할을 한다고 볼 수 있다
 ### 부제 : 정적 팩토리 메서드를 고려하라
