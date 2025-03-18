@@ -1,7 +1,7 @@
 package chapter02.item13;
 
 public class HashTableExam implements Cloneable {
-    private Entry[] buckets = ...;
+    private Entry[] buckets = new Entry[100];
 
     private static class Entry {
         final Object key;
