@@ -180,6 +180,10 @@ public class InstrumentedHashSet<E> extends ForwardingSet<E> {
 앞서 코드에서 다른 Set 인스턴스를 감싸고 있는 ForwardingSet클래스를 래퍼 클래스라고 한다<br/>
 또한 다른 Set에 기능을 덧씌운다는 점에서 `데코레이터 패턴`이라고 한다.
 
+> 데코레이터 패턴
+> 
+> - 기본 기능을 변경하지 않고, 새로운 기능을 덧붙일 수 있도록 해주는 구조
+
 #### 래퍼 클래스의 단점
 > 래퍼 클래스는 콜백 프레임워크와 어울리지 않는다<br/>
  
